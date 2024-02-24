@@ -7,6 +7,8 @@ struct Genre // об'Їкт ∆анр
     uint32_t code = 0;
 
     char name[25] = {};
+
+    int64_t next = -1;
 };
 
 struct Author // об'Їкт јвтор
@@ -14,6 +16,8 @@ struct Author // об'Їкт јвтор
     uint32_t code = 0;
 
     char name[25] = {};
+
+    int64_t next = -1;
 };
 
 struct Book // зв'€зок
@@ -179,11 +183,8 @@ void PrintNodes(std::fstream& file, const std::streampos& record_pos)
     }
 }
 
-
-/*int main()
+std::fstream SaveOpenFile(const std::string& filename)
 {
-    const std::string filename = "file.bin";
-
     std::fstream file(filename, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
     auto err = errno;
 
@@ -195,8 +196,16 @@ void PrintNodes(std::fstream& file, const std::streampos& record_pos)
     if (!file) {
         std::cerr << "Unable to open file=" << filename << std::endl;
 
-        return -1;
+        throw std::runtime_error("Error opening " + filename + " file.");
     }
+
+    return file;
+}
+
+int main()
+{
+    std::fstream masterfile = SaveOpenFile("master.dat");
+    std::fstream slavefile = SaveOpenFile("salve.dat");
 
     std::streampos write_pos = 0;
     std::streampos prev_pos = -1;
@@ -206,40 +215,13 @@ void PrintNodes(std::fstream& file, const std::streampos& record_pos)
         Book record = { static_cast<uint32_t>(i) % 3 + 1, 456, static_cast<uint32_t>(100) * i, 10 };
         strncpy_s(record.name, ("Item " + std::to_string(i)).c_str(), std::size(record.name));
 
-        AddNode(record, file, write_pos, prev_pos);
+        AddNode(record, masterfile, write_pos, prev_pos);
 
         prev_pos = write_pos;
         write_pos = write_pos + static_cast<std::streamoff>(sizeof(Book));
     }
 
-    PrintNodes(file, 0);
-
-    return 0;
-}
-*/
-
-int main() {
-    Genre genre1 = { 1, "Fiction" };
-    Genre genre2 = { 2, "Non-Fiction" };
-
-    Author author1 = { 101, "John Doe" };
-    Author author2 = { 102, "Jane Doe" };
-
-    Book book1 = { 101, 1, 123456789, "Book1", -1 };
-    Book book2 = { 102, 2, 987654321, "Book2", -1 };
-
-    // Inserting genres, authors, and books
-    insert_genre(genre1);
-    insert_genre(genre2);
-
-    insert_author(author1);
-    insert_author(author2);
-
-    insert_book(book1);
-    insert_book(book2);
-
-    // Reading and displaying books
-    read_books();
+    PrintNodes(masterfile, 0);
 
     return 0;
 }
