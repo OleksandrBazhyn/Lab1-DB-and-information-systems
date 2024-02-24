@@ -41,7 +41,16 @@ static Genre& GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочат
     IndexGenre currentIndex;
     bool found = false;
 
-    while (indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre))) {
+    indexGenresFile.seekg(0, std::ios::end);
+
+    // Отримати останньої позиції (позначка поточної позиції в кінці файлу)
+    std::streampos endFilePos = indexGenresFile.tellg();
+
+    indexGenresFile.seekg(0, std::ios::beg);
+
+    while (true) {
+        if (indexGenresFile.tellg() == endFilePos) break;
+        indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre));
         if (currentIndex.key == GenreKey) {
             found = true;
             break;
@@ -102,19 +111,19 @@ void AddGenre(Genre& newGenre) {
     genresFile.close();
 
     // Оновлюємо індексну таблицю
-    std::fstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::ate);
+    std::fstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
 
     if (!indexGenresFile.is_open()) {
         std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
         throw std::runtime_error("Unable to open file indexGenresFile.ind");
     }
     // indexGenresFile.seekg(0, std::ios::end);     з std::ios::ate прапором і без цього позиція буде в кінці
-    // 
+
     // Отримати розмір файлу (позначка поточної позиції в кінці файлу)
-    std::streampos fileSize = indexGenresFile.tellg();
+    std::streampos endFilePos = indexGenresFile.tellg();
 
     // Визначити кількість записів у файлі
-    uint32_t indexRecordsCount = fileSize / sizeof(IndexGenre);
+    uint32_t indexRecordsCount = endFilePos / sizeof(IndexGenre);
 
     // Перейти до останнього запису
     indexGenresFile.seekg(-static_cast<std::streamoff>(sizeof(IndexGenre)), std::ios::cur);
@@ -163,35 +172,12 @@ bool Write(const Genre& record, std::fstream& file, const std::streampos& pos)
 
 int main()
 {
-    /*std::fstream genresfile("genresfile.fl", std::ios::binary | std::ios::in | std::ios::out);
+    Genre newGenre = {0, "new Genre"};
+    AddGenre(newGenre);
 
-    if (!genresfile.is_open()) {
-        std::cerr << "Unable to open file genresfile.fl" << std::endl;
-        return 1;
-    }*/
-
-
-
-
-
-
-
-
-    const std::string filename = "file.bin";
-
-    std::fstream file(filename, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
-    auto err = errno;
-
-    if (err == ENOENT)
-    {
-        file = std::fstream(filename, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
-    }
-
-    if (!file) {
-        std::cerr << "Unable to open file=" << filename << std::endl;
-
-        return -1;
-    }
+    // Випробуємо GetM
+    uint32_t genreKeyToFind = 1; // Припустимо, що це ключ жанру, який ви шукаєте
+    GetM(genreKeyToFind);
 
 
     return 0;
