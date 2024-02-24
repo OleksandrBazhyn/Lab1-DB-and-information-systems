@@ -82,18 +82,41 @@ static Genre& GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочат
 }
 
 void AddGenre(Genre& newGenre) {
-    // Додаємо новий запис в основний файл
-    std::fstream genresFile("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+    std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
-    if (!genresFile.is_open()) {
-        std::cerr << "Unable to open file genresFile.fl" << std::endl;
-        throw std::runtime_error("Unable to open file genresFile.fl");
+    if (!genresFileForRead.is_open()) {
+        genresFileForRead = std::ifstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!genresFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
     }
 
     // Дізнатися кількість записів в файлі. Ця інформація на початку файлу (header)
-    genresFile.seekg(0, std::ios::beg);
+    genresFileForRead.seekg(0, std::ios::beg);
     uint32_t recordsCount = 0;
-    genresFile.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+    genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+
+    genresFileForRead.close();
+
+    std::ofstream genresFile("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!genresFile.is_open()) {
+        genresFile = std::ofstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!genresFile.is_open())
+        {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
+    }
+
+    if (recordsCount == 0)
+    {
+        genresFile.seekp(0, std::ios::beg);
+        uint32_t i = 1;
+        genresFile.write(reinterpret_cast<const char*>(&i), sizeof(uint32_t));
+    }
 
     genresFile.seekp(0, std::ios::end);  // Перейти в кінцеву позицію
 
@@ -105,7 +128,7 @@ void AddGenre(Genre& newGenre) {
     genresFile.write(reinterpret_cast<const char*>(&newGenre), sizeof(Genre));
 
     genresFile.seekp(0, std::ios::beg);
-    genresFile.write(reinterpret_cast<const char*>(&recordsCount), sizeof(uint32_t)); // Додали новий запис та збільшили recordsCount у файлі на одиницю
+    genresFile.write(reinterpret_cast<const char*>(&recordsCount), sizeof(uint32_t)); // Додали новий запис зі збільшеним recordsCount на одиницю
 
     genresFile.flush();
     genresFile.close();
@@ -172,8 +195,11 @@ bool Write(const Genre& record, std::fstream& file, const std::streampos& pos)
 
 int main()
 {
-    Genre newGenre = {0, "new Genre"};
+
+    Genre newGenre = {0, "new Genre1"};
     AddGenre(newGenre);
+    Genre newGenre2 = { 0, "new Genre2" };
+    AddGenre(newGenre2);
 
     // Випробуємо GetM
     uint32_t genreKeyToFind = 1; // Припустимо, що це ключ жанру, який ви шукаєте
