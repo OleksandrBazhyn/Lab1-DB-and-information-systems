@@ -49,7 +49,7 @@ static Genre& GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочат
     indexGenresFile.seekg(0, std::ios::beg);
 
     while (true) {
-        if (indexGenresFile.tellg() == endFilePos) break;
+        if (indexGenresFile.tellg() == 0) break;
         indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre));
         if (currentIndex.key == GenreKey) {
             found = true;
