@@ -6,9 +6,7 @@ struct Books
 {
     uint32_t author_code = 0;
     uint32_t genre_code = 0;
-    uint32_t language_code = 0;
     uint32_t isbn = 0;
-    uint32_t quantity = 0;
 
     char name[25] = {};
 
@@ -18,7 +16,6 @@ struct Books
 std::ostream& operator<<(std::ostream& os, const Books& books) {
     os << "Author Code: " << books.author_code << ", "
         << "Genre Code: " << books.genre_code << ", "
-        << "Language Code: " << books.language_code << ", "
         << "Name: " << books.name << ", "
         << "ISBN: " << books.isbn;
     return os;
