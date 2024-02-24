@@ -4,102 +4,179 @@
 
 struct Books
 {
+    uint32_t key = 0;
     uint32_t author_code = 0;
     uint32_t genre_code = 0;
     uint32_t isbn = 0;
 
     char name[25] = {};
-
-    int64_t next = -1;
 };
 
-std::ostream& operator<<(std::ostream& os, const Books& books) {
-    os << "Author Code: " << books.author_code << ", "
-        << "Genre Code: " << books.genre_code << ", "
-        << "Name: " << books.name << ", "
-        << "ISBN: " << books.isbn;
-    return os;
+struct Genre
+{
+    uint32_t key = 0;
+    char name[25] = {};
+};
+
+struct Authors
+{
+    uint32_t key = 0;
+    char name[25] = {};
+};
+
+struct IndexGenre {
+    uint32_t key = 0;
+    long position; // В теорії key * sizeof(Genre) + sizeof(uint32_t)
+};
+
+static Genre& GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
+    std::ifstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in);
+
+    if (!indexGenresFile.is_open()) {
+        std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
+        throw std::runtime_error("Unable to open file indexGenresFile.ind");
+    }
+
+    // Зчитати індекс з файлу
+    IndexGenre currentIndex;
+    bool found = false;
+
+    while (indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre))) {
+        if (currentIndex.key == GenreKey) {
+            found = true;
+            break;
+        }
+    }
+
+    indexGenresFile.close();
+
+    if (found) {
+        std::ifstream genresFile("genresFile.fl", std::ios::binary | std::ios::in);
+        if (!genresFile.is_open()) {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
+
+        // Перейти до позиції запису в основному файлі
+        genresFile.seekg(currentIndex.position, std::ios::beg);
+
+        Genre desiredGenre;
+        genresFile.read(reinterpret_cast<char*>(&desiredGenre), sizeof(Genre));
+
+        genresFile.close();
+
+        return desiredGenre;
+    }
+    else {
+        std::cerr << "Genre not found" << std::endl;
+    }
 }
 
-bool Read(Books& record, std::fstream& file, const std::streampos& pos)
+void AddGenre(Genre& newGenre) {
+    // Додаємо новий запис в основний файл
+    std::fstream genresFile("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!genresFile.is_open()) {
+        std::cerr << "Unable to open file genresFile.fl" << std::endl;
+        throw std::runtime_error("Unable to open file genresFile.fl");
+    }
+
+    // Дізнатися кількість записів в файлі. Ця інформація на початку файлу (header)
+    genresFile.seekg(0, std::ios::beg);
+    uint32_t recordsCount = 0;
+    genresFile.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+
+    genresFile.seekp(0, std::ios::end);  // Перейти в кінцеву позицію
+
+    recordsCount++;
+    newGenre.key = recordsCount;
+
+    std::streampos newPosition = genresFile.tellp();  // Знайти позицію нового запису
+
+    genresFile.write(reinterpret_cast<const char*>(&newGenre), sizeof(Genre));
+
+    genresFile.seekp(0, std::ios::beg);
+    genresFile.write(reinterpret_cast<const char*>(&recordsCount), sizeof(uint32_t)); // Додали новий запис та збільшили recordsCount у файлі на одиницю
+
+    genresFile.flush();
+    genresFile.close();
+
+    // Оновлюємо індексну таблицю
+    std::fstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::ate);
+
+    if (!indexGenresFile.is_open()) {
+        std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
+        throw std::runtime_error("Unable to open file indexGenresFile.ind");
+    }
+    // indexGenresFile.seekg(0, std::ios::end);     з std::ios::ate прапором і без цього позиція буде в кінці
+    // 
+    // Отримати розмір файлу (позначка поточної позиції в кінці файлу)
+    std::streampos fileSize = indexGenresFile.tellg();
+
+    // Визначити кількість записів у файлі
+    uint32_t indexRecordsCount = fileSize / sizeof(IndexGenre);
+
+    // Перейти до останнього запису
+    indexGenresFile.seekg(-static_cast<std::streamoff>(sizeof(IndexGenre)), std::ios::cur);
+
+    // Прочитати останній запис
+    IndexGenre lastIndex;
+    indexGenresFile.read(reinterpret_cast<char*>(&lastIndex), sizeof(IndexGenre));
+
+    // Отримати останній ключ
+    uint32_t lastKey = indexRecordsCount > 0 ? lastIndex.key : 0;
+
+    // Збільшуємо ключ для нового запису
+    uint32_t newKey = lastKey + 1;
+
+    // Додаємо новий запис в індекс
+    IndexGenre newIndex;
+    newIndex.key = newKey;
+    newIndex.position = newPosition;
+
+    indexGenresFile.seekp(0, std::ios::end);  // Перейти в кінцеву позицію
+    indexGenresFile.write(reinterpret_cast<const char*>(&newIndex), sizeof(IndexGenre));
+}
+
+bool Read(Genre& record, std::fstream& file, const std::streampos& pos)
 {
     if (!file)
         return false;
 
     file.seekg(pos);
-    file.read(reinterpret_cast<char*>(&record), sizeof(Books));
+    file.read(reinterpret_cast<char*>(&record), sizeof(Genre));
 
     return !file.fail();
 }
 
-bool Write(const Books& record, std::fstream& file, const std::streampos& pos)
+bool Write(const Genre& record, std::fstream& file, const std::streampos& pos)
 {
     if (!file)
         return false;
 
     file.seekp(pos);
-    file.write(reinterpret_cast<const char*>(&record), sizeof(Books));
+    file.write(reinterpret_cast<const char*>(&record), sizeof(Genre));
     file.flush();
 
     return !file.fail();
 }
 
-bool SetNextPtr(std::fstream& file, const std::streampos& record_pos, const std::streampos& next_record_pos)
-{
-    Books tmp;
-
-    if (!Read(tmp, file, record_pos))
-    {
-        std::cerr << "Unable to set next ptr. Read failed" << std::endl;
-        return false;
-    }
-
-    tmp.next = next_record_pos;
-
-    if (!Write(tmp, file, record_pos))
-    {
-        std::cerr << "Unable to set next ptr. Read failed" << std::endl;
-        return false;
-    }
-
-    return true;
-}
-
-bool AddNode(const Books& record, std::fstream& file, const std::streampos& pos, const std::streampos& prev_record_pos = -1)
-{
-    if (!Write(record, file, pos))
-    {
-        return false;
-    }
-
-    if (prev_record_pos == -1)
-        return true;
-
-    return SetNextPtr(file, prev_record_pos, pos);
-}
-
-void PrintNodes(std::fstream& file, const std::streampos& record_pos)
-{
-    Books tmp;
-
-    std::streampos read_pos = record_pos;
-
-    while (read_pos != -1)
-    {
-        if (!Read(tmp, file, read_pos))
-        {
-            std::cerr << "Unable to update next_ptr. Error: read failed" << std::endl;
-            return;
-        }
-
-        std::cout << tmp << std::endl;
-        read_pos = tmp.next;
-    }
-}
-
-
 int main()
 {
+    /*std::fstream genresfile("genresfile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!genresfile.is_open()) {
+        std::cerr << "Unable to open file genresfile.fl" << std::endl;
+        return 1;
+    }*/
+
+
+
+
+
+
+
+
     const std::string filename = "file.bin";
 
     std::fstream file(filename, std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
@@ -116,21 +193,6 @@ int main()
         return -1;
     }
 
-    std::streampos write_pos = 0;
-    std::streampos prev_pos = -1;
-
-    for (int i = 0; i < 10; ++i)
-    {
-        Books record = { static_cast<uint32_t>(i) % 3 + 1, 456, static_cast<uint32_t>(100) * i, 10 };
-        strncpy_s(record.name, ("Item " + std::to_string(i)).c_str(), std::size(record.name));
-
-        AddNode(record, file, write_pos, prev_pos);
-
-        prev_pos = write_pos;
-        write_pos = write_pos + static_cast<std::streamoff>(sizeof(Books));
-    }
-
-    PrintNodes(file, 0);
 
     return 0;
 }
