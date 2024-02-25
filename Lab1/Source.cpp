@@ -328,14 +328,15 @@ int main()
 
     for (size_t i = 0; i < resGetM.size(); i++)
     {
-        std::cerr << resGetM[i].key << " " << resGetM[i].name << std::endl;
+        std::cout << resGetM[i].key << " " << resGetM[i].name << std::endl;
     }
 
-    std::vector<Book> resGetS = GetS(1);
+    std::vector<Book> resGetS = GetS(39);
 
-    for (size_t i = 0; i < resGetS.size(); i++)
-    {
-        std::cerr << "Key: " << resGetS[i].key << " name: " << resGetS[i].name << " GenreCode: " << resGetS[i].genre_code << " ISBN: " << resGetS[i].isbn << std::endl;
+    std::cout << "Key\tName\t    GenreCode\tISBN" << std::endl;
+    std::cout << "-------------------------------------------" << std::endl;
+    for (const Book& book : resGetS) {
+        std::cout << book.key << "\t" << book.name << "\t    " << book.genre_code << "\t\t" << book.isbn << std::endl;
     }
 
     return 0;
