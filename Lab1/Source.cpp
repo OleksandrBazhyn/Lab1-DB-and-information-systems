@@ -208,10 +208,10 @@ bool Write(const Genre& record, std::fstream& file, const std::streampos& pos)
 int main()
 {
 
-    Genre newGenre = {0, "new Genre1"};
+    /*Genre newGenre = {0, "new Genre1"};
     AddGenre(newGenre);
     Genre newGenre2 = { 1, "new Genre2" };
-    AddGenre(newGenre2);
+    AddGenre(newGenre2);*/
 
     // Випробуємо GetM
     uint32_t genreKeyToFind = 1;
