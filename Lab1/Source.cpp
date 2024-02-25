@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 struct Books
 {
@@ -29,52 +30,61 @@ struct IndexGenre {
     long position; // В теорії key * sizeof(Genre) + sizeof(uint32_t)
 };
 
-static Genre& GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
+static std::vector<Genre> GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
     std::ifstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in);
-
+    
     if (!indexGenresFile.is_open()) {
-        std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
-        throw std::runtime_error("Unable to open file indexGenresFile.ind");
+        std::ofstream createIndexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::trunc);
+        if (!indexGenresFile.is_open()) {
+            std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
+            throw std::runtime_error("Unable to open file indexGenresFile.ind");
+        }
+        createIndexGenresFile.close();
+        indexGenresFile = std::ifstream("indexGenresFile.ind", std::ios::binary | std::ios::in);
     }
 
     // Зчитати індекс з файлу
     IndexGenre currentIndex;
-    bool found = false;
-
-    indexGenresFile.seekg(0, std::ios::end);
-
-    // Отримати останньої позиції (позначка поточної позиції в кінці файлу)
-    std::streampos endFilePos = indexGenresFile.tellg();
+    std::vector<IndexGenre> neededIndexesGenre = {};
+    bool foundAll = false;
 
     indexGenresFile.seekg(0, std::ios::beg);
 
     while (true) {
-        //if (indexGenresFile.tellg() == 0) break;
-        indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre));
-        if (currentIndex.key == GenreKey) {
-            found = true;
+        if (!indexGenresFile.eof())
+        {
+            indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre));
+            if (currentIndex.key == GenreKey) {
+                neededIndexesGenre.push_back(currentIndex);
+                foundAll = true;
+            }
+        }
+        else {
             break;
         }
     }
 
     indexGenresFile.close();
 
-    if (found) {
+    if (foundAll) {
         std::ifstream genresFile("genresFile.fl", std::ios::binary | std::ios::in);
         if (!genresFile.is_open()) {
             std::cerr << "Unable to open file genresFile.fl" << std::endl;
             throw std::runtime_error("Unable to open file genresFile.fl");
         }
 
-        // Перейти до позиції запису в основному файлі
-        genresFile.seekg(currentIndex.position, std::ios::beg);
+        std::vector<Genre> neededGenres(neededIndexesGenre.size());
 
-        Genre desiredGenre;
-        genresFile.read(reinterpret_cast<char*>(&desiredGenre), sizeof(Genre));
+        for (size_t i = 0; i < neededIndexesGenre.size(); i++)
+        {
+            // Перейти до позиції запису в основному файлі
+            genresFile.seekg(neededIndexesGenre[i].position, std::ios::beg);
 
-        genresFile.close();
+            genresFile.read(reinterpret_cast<char*>(&neededGenres[i]), sizeof(Genre));
 
-        return desiredGenre;
+            genresFile.close();
+        }
+        return neededGenres;
     }
     else {
         std::cerr << "Genre not found" << std::endl;
@@ -208,16 +218,16 @@ bool Write(const Genre& record, std::fstream& file, const std::streampos& pos)
 int main()
 {
 
-    /*Genre newGenre = {0, "new Genre1"};
+    Genre newGenre = {0, "new Genre1"};
     AddGenre(newGenre);
     Genre newGenre2 = { 1, "new Genre2" };
-    AddGenre(newGenre2);*/
+    AddGenre(newGenre2);
 
     // Випробуємо GetM
     uint32_t genreKeyToFind = 1;
-    Genre res = GetM(genreKeyToFind);
+    std::vector<Genre> res = GetM(genreKeyToFind);
 
-    std::cout << res.key;
+    std::cout << res[0].key;
 
     return 0;
 }

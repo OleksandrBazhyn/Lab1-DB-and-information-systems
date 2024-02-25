@@ -29,6 +29,7 @@ struct Tindex {
 
 Group get_m(int id, map<int, int>& groupIndex) {
     FILE* groups = fopen("groups.dat", "a+");
+    if (groups == NULL) throw runtime_error("Unable to open groups.dat in get-m method");
     Group g;
     if (groupIndex.empty()) return { -1 };
     auto m = groupIndex.rbegin();
@@ -49,6 +50,7 @@ Group get_m(int id, map<int, int>& groupIndex) {
 
 Student get_s(int id, map<int, int>& studentIndex) {
     FILE* students = fopen("students.dat", "a+");
+    if (students == NULL) throw runtime_error("Unable to open students.dat in get-s method");
     Student s;
     if (studentIndex.empty()) return { -1 };
     auto m = studentIndex.rbegin();
@@ -69,6 +71,20 @@ Student get_s(int id, map<int, int>& studentIndex) {
 
 void update_m(Group g, map<int, int>& groupIndex) {
     FILE* groups = fopen("groups.dat", "r+");
+    if (groups == NULL)
+    {
+        groups = fopen("groups.dat", "w+");
+        fclose(groups);
+        groups = fopen("groups.dat", "r+");
+        if (groups == NULL) {
+            perror("Error creating/opening file");
+            throw runtime_error("Unable to open groups.dat in update_m method");
+        }
+        printf("File created and opened successfully!\n");
+    }
+    else {
+        printf("File groups.dat opened successfully!\n");
+    }
     int id = groupIndex[g.id];
     fseek(groups, (id - 1) * sizeof(Group), SEEK_SET);
     fwrite(&g, sizeof(Group), 1, groups);
@@ -78,6 +94,20 @@ void update_m(Group g, map<int, int>& groupIndex) {
 
 void update_s(Student s, map<int, int>& studentIndex, map<int, int>& GSIndex, int prevGroup) {
     FILE* students = fopen("students.dat", "r+");
+    if (students == NULL)
+    {
+        students = fopen("students.dat", "w+");
+        fclose(students);
+        students = fopen("students.dat", "r+");
+        if (students == NULL) {
+            perror("Error creating/opening file");
+            throw runtime_error("Unable to open students.dat in update_s method");
+        }
+        printf("File created and opened successfully!\n");
+    }
+    else {
+        printf("File students.dat opened successfully!\n");
+    }
     int id = studentIndex[s.id];
 
     if (s.groupID == prevGroup) {
@@ -128,6 +158,7 @@ void update_s(Student s, map<int, int>& studentIndex, map<int, int>& GSIndex, in
 
 void insert_m(map<int, int>& groupIndex, queue<Tindex>& deletedGroups, map<int, int>& GSIndex) {
     FILE* groups = fopen("groups.dat", "a+");
+    if (groups == NULL) throw runtime_error("Unable to open groups.dat in insert-m method");
     Group newGroup = { 0, "", false };
     printf("Enter the name of the group\n");
     cin >> newGroup.name;
@@ -156,6 +187,7 @@ void insert_m(map<int, int>& groupIndex, queue<Tindex>& deletedGroups, map<int, 
 
 void insert_s(map<int, int>& studentIndex, map<int, int>& GSIndex, queue<Tindex>& deletedStudents) {
     FILE* students = fopen("students.dat", "a+");
+    if (students == NULL) throw runtime_error("Unable to open students.dat in insert-s method");
     Student newStudent;
     cout << "Enter the surname of the student\n";
     cin >> newStudent.surname;
@@ -199,6 +231,20 @@ void insert_s(map<int, int>& studentIndex, map<int, int>& GSIndex, queue<Tindex>
 
 void delete_s(Student s, map<int, int>& studentIndex, map<int, int>& GSIndex, queue<Tindex>& deletedStudents) {
     FILE* students = fopen("students.dat", "r+");
+    if (students == NULL)
+    {
+        students = fopen("students.dat", "w+");
+        fclose(students);
+        students = fopen("students.dat", "r+");
+        if (students == NULL) {
+            perror("Error creating/opening file");
+            throw runtime_error("Unable to open students.dat in delete_s method");
+        }
+        printf("File created and opened successfully!\n");
+    }
+    else {
+        printf("File students.dat opened successfully!\n");
+    }
     s.deleted = true;
     fseek(students, (studentIndex[s.id] - 1) * sizeof(Student), SEEK_SET);
     fwrite(&s, sizeof(Student), 1, students);
@@ -230,6 +276,20 @@ void delete_s(Student s, map<int, int>& studentIndex, map<int, int>& GSIndex, qu
 
 void delete_m(Group g, map<int, int>& groupIndex, map<int, int>& studentIndex, map<int, int>& GSIndex, queue<Tindex>& deletedGroups, queue<Tindex>& deletedStudents) {
     FILE* groups = fopen("groups.dat", "r+");
+    if (groups == NULL)
+    {
+        groups = fopen("groups.dat", "w+");
+        fclose(groups);
+        groups = fopen("groups.dat", "r+");
+        if (groups == NULL) {
+            perror("Error creating/opening file");
+            throw runtime_error("Unable to open groups.dat in delete_s method");
+        }
+        printf("File created and opened successfully!\n");
+    }
+    else {
+        printf("File groups.dat opened successfully!\n");
+    }
     g.deleted = true;
     fseek(groups, (groupIndex[g.id] - 1) * sizeof(Group), SEEK_SET);
     fwrite(&g, sizeof(Group), 1, groups);
@@ -256,6 +316,7 @@ void delete_m(Group g, map<int, int>& groupIndex, map<int, int>& studentIndex, m
 
 void calc_m(queue<Tindex> deletedGroups) {
     FILE* groups = fopen("groups.dat", "a+");
+    if (groups == NULL) throw runtime_error("Unable to open groups.dat in calc-m method");
     fseek(groups, 0L, SEEK_END);
     int n = ftell(groups) / sizeof(Group);
     n -= deletedGroups.size();
@@ -265,6 +326,7 @@ void calc_m(queue<Tindex> deletedGroups) {
 
 void calc_s(queue<Tindex> deletedStudents) {
     FILE* students = fopen("students.dat", "a+");
+    if (students == NULL) throw runtime_error("Unable to open students.dat in calc-s method");
     fseek(students, 0L, SEEK_END);
     int n = ftell(students) / sizeof(Student);
     n -= deletedStudents.size();
@@ -274,6 +336,7 @@ void calc_s(queue<Tindex> deletedStudents) {
 
 void ut_m() {
     FILE* groups = fopen("groups.dat", "r");
+    if (groups == NULL) throw runtime_error("Unable to open groups.dat in ut-m method");
     Group g;
     while (!feof(groups)) {
         if (fread(&g, sizeof(Group), 1, groups)) {
@@ -284,6 +347,7 @@ void ut_m() {
 
 void ut_s() {
     FILE* students = fopen("students.dat", "r");
+    if (students == NULL) throw runtime_error("Unable to open students.dat in ut-s method");
     Student s;
     while (!feof(students)) {
         if (fread(&s, sizeof(Student), 1, students)) {
@@ -294,6 +358,7 @@ void ut_s() {
 
 void find_students(Group g, map<int, int>& studentIndex, map<int, int>& GSIndex) {
     FILE* students = fopen("students.dat", "a+");
+    if (students == NULL) throw runtime_error("Unable to open students.dat in find_students method");
     Student s;
 
     int id = GSIndex[g.id];
@@ -312,6 +377,7 @@ void find_students(Group g, map<int, int>& studentIndex, map<int, int>& GSIndex)
 void read_index_table(map<int, int>& studentIndex, map<int, int>& groupIndex, map<int, int>& GSIndex) {
     Tindex index;
     FILE* ind = fopen("index_student.dat", "r+");
+    if (ind == NULL) throw runtime_error("Unable to open index_student.dat in read_index_table method");
     while (!feof(ind)) {
         if (fread(&index, sizeof(Tindex), 1, ind)) {
             studentIndex[index.id] = index.actualID;
@@ -320,6 +386,7 @@ void read_index_table(map<int, int>& studentIndex, map<int, int>& groupIndex, ma
     fclose(ind);
 
     ind = fopen("index_group.dat", "r+");
+    if (ind == NULL) throw runtime_error("Unable to open index_group.dat in read_index_table method");
     while (!feof(ind)) {
         if (fread(&index, sizeof(Tindex), 1, ind)) {
             groupIndex[index.id] = index.actualID;
@@ -328,6 +395,7 @@ void read_index_table(map<int, int>& studentIndex, map<int, int>& groupIndex, ma
     fclose(ind);
 
     ind = fopen("index_gs.dat", "r+");
+    if (ind == NULL) throw runtime_error("Unable to open index_gs.dat in read_index_table method");
     while (!feof(ind)) {
         if (fread(&index, sizeof(Tindex), 1, ind)) {
             GSIndex[index.id] = index.actualID;
