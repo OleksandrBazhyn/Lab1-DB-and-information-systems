@@ -2,27 +2,41 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <random>
 
-struct Books
+struct Book
 {
     uint32_t key = 0;
-    uint32_t author_code = 0;
     uint32_t genre_code = 0;
     uint32_t isbn = 0;
 
     char name[25] = {};
+
+    Book() : key(0), genre_code(0), isbn(0)
+    {
+        name[0] = '\0';
+    }
+
+    Book(size_t k, uint32_t gc, uint32_t i, const char* n) : key(k), genre_code(gc), isbn(i)
+    {
+        strncpy_s(name, n, _TRUNCATE);
+    }
 };
 
 struct Genre
 {
     uint32_t key = 0;
     char name[25] = {};
-};
 
-struct Authors
-{
-    uint32_t key = 0;
-    char name[25] = {};
+    Genre() : key(0)
+    {
+        name[0] = '\0';
+    }
+
+    Genre(uint32_t k, const char* n) : key(k)
+    {
+        strncpy_s(name, n, _TRUNCATE);
+    }
 };
 
 struct IndexGenre {
@@ -192,6 +206,57 @@ void AddGenre(Genre& newGenre) {
     indexGenresFile.close();
 }
 
+void AddBook(Book& newBook) {
+    std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!booksFileForRead.is_open()) {
+        booksFileForRead = std::ifstream("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!booksFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file booksFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file booksFile.fl");
+        }
+    }
+
+    // Дізнатися кількість записів в файлі. Ця інформація на початку файлу (header)
+    booksFileForRead.seekg(0, std::ios::beg);
+    uint32_t recordsCount = 0;
+    booksFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+
+    booksFileForRead.close();
+
+    std::ofstream booksFile("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!booksFile.is_open()) {
+        booksFile = std::ofstream("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!booksFile.is_open())
+        {
+            std::cerr << "Unable to open file booksFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file booksFile.fl");
+        }
+    }
+
+    if (recordsCount == 0)
+    {
+        booksFile.seekp(0, std::ios::beg);
+        uint32_t i = 1;
+        booksFile.write(reinterpret_cast<const char*>(&i), sizeof(uint32_t));
+    }
+
+    booksFile.seekp(0, std::ios::end);  // Перейти в кінцеву позицію
+
+    recordsCount++;
+    newBook.key = recordsCount;
+
+    booksFile.write(reinterpret_cast<const char*>(&newBook), sizeof(Book));
+
+    booksFile.seekp(0, std::ios::beg);
+    booksFile.write(reinterpret_cast<const char*>(&recordsCount), sizeof(uint32_t)); // Додали новий запис зі збільшеним recordsCount на одиницю
+
+    booksFile.flush();
+    booksFile.close();
+}
+
 bool Read(Genre& record, std::fstream& file, const std::streampos& pos)
 {
     if (!file)
@@ -217,17 +282,36 @@ bool Write(const Genre& record, std::fstream& file, const std::streampos& pos)
 
 int main()
 {
-
-    Genre newGenre = {0, "new Genre1"};
-    AddGenre(newGenre);
-    Genre newGenre2 = { 1, "new Genre2" };
-    AddGenre(newGenre2);
+    /*
+    for (size_t i = 1; i < 50; i++)
+    {
+        std::string name = "Genre" + std::to_string(i);
+        Genre f(i, name.c_str());
+        AddGenre(f);
+    }
+    */
+    /*
+    for (size_t i = 1; i < 50; i++)
+    {
+        std::string name = "Book" + std::to_string(i);
+        uint32_t gc = rand() % (50 - 1 + 1) + 1;
+        Book f(i, gc, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, name.c_str());
+        AddBook(f);
+    }
+    */
+    /*
+    Book f(0, 1, 22222222, "testBook");
+    AddBook(f); // Додано тестову книгу з кодом жанру 1
+    */
 
     // Випробуємо GetM
     uint32_t genreKeyToFind = 1;
     std::vector<Genre> res = GetM(genreKeyToFind);
 
-    std::cout << res[0].key;
+    for (size_t i = 0; i < res.size(); i++)
+    {
+        std::cerr << res[i].key << " " << res[i].name << std::endl;
+    }
 
     return 0;
 }
