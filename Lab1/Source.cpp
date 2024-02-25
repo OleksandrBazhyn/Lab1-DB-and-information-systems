@@ -44,12 +44,14 @@ struct IndexGenre {
     long position; // В теорії key * sizeof(Genre) + sizeof(uint32_t)
 };
 
-static std::vector<Genre> GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
+std::vector<Genre> GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
     std::ifstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in);
     
-    if (!indexGenresFile.is_open()) {
+    if (!indexGenresFile.is_open())
+    {
         std::ofstream createIndexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::trunc);
-        if (!indexGenresFile.is_open()) {
+        if (!indexGenresFile.is_open())
+        {
             std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
             throw std::runtime_error("Unable to open file indexGenresFile.ind");
         }
@@ -65,24 +67,26 @@ static std::vector<Genre> GetM(uint32_t GenreKey) { // Використовує індексну таб
     indexGenresFile.seekg(0, std::ios::beg);
 
     while (true) {
-        if (!indexGenresFile.eof())
+        indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre));
+        if (indexGenresFile.eof())
         {
-            indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre));
-            if (currentIndex.key == GenreKey) {
-                neededIndexesGenre.push_back(currentIndex);
-                foundAll = true;
-            }
-        }
-        else {
             break;
+            
+        }
+        if (currentIndex.key == GenreKey)
+        {
+            neededIndexesGenre.push_back(currentIndex);
+            foundAll = true;
         }
     }
 
     indexGenresFile.close();
 
-    if (foundAll) {
+    if (foundAll)
+    {
         std::ifstream genresFile("genresFile.fl", std::ios::binary | std::ios::in);
-        if (!genresFile.is_open()) {
+        if (!genresFile.is_open())
+        {
             std::cerr << "Unable to open file genresFile.fl" << std::endl;
             throw std::runtime_error("Unable to open file genresFile.fl");
         }
@@ -100,8 +104,46 @@ static std::vector<Genre> GetM(uint32_t GenreKey) { // Використовує індексну таб
         }
         return neededGenres;
     }
-    else {
+    else
+    {
         std::cerr << "Genre not found" << std::endl;
+    }
+}
+
+std::vector<Book> GetS(uint32_t genreCode) {
+    std::ifstream booksFile("booksFile.fl", std::ios::binary | std::ios::in);
+    if (!booksFile.is_open()) {
+        std::cerr << "Unable to open file booksFile.fl" << std::endl;
+        throw std::runtime_error("Unable to open file booksFile.fl");
+    }
+
+    booksFile.seekg(sizeof(uint32_t), std::ios::beg); // Переступив через header, що містить інформацію про кількість записів
+
+    Book currentBook;
+    std::vector<Book> neededBooks;
+    bool foundAll = false;
+
+    while (true) {
+        booksFile.read(reinterpret_cast<char*>(&currentBook), sizeof(Book));
+        if (booksFile.eof()) {
+            break;
+        }
+        if (currentBook.genre_code == genreCode) {
+            neededBooks.push_back(currentBook);
+            foundAll = true;
+        }
+    }
+
+    booksFile.close();
+
+    if (foundAll)
+    {
+        return neededBooks;
+    }
+    else
+    {
+        std::cerr << "Book not found" << std::endl;
+        booksFile.close();
     }
 }
 
@@ -257,29 +299,6 @@ void AddBook(Book& newBook) {
     booksFile.close();
 }
 
-bool Read(Genre& record, std::fstream& file, const std::streampos& pos)
-{
-    if (!file)
-        return false;
-
-    file.seekg(pos);
-    file.read(reinterpret_cast<char*>(&record), sizeof(Genre));
-
-    return !file.fail();
-}
-
-bool Write(const Genre& record, std::fstream& file, const std::streampos& pos)
-{
-    if (!file)
-        return false;
-
-    file.seekp(pos);
-    file.write(reinterpret_cast<const char*>(&record), sizeof(Genre));
-    file.flush();
-
-    return !file.fail();
-}
-
 int main()
 {
     /*
@@ -305,12 +324,18 @@ int main()
     */
 
     // Випробуємо GetM
-    uint32_t genreKeyToFind = 1;
-    std::vector<Genre> res = GetM(genreKeyToFind);
+    std::vector<Genre> resGetM = GetM(1);
 
-    for (size_t i = 0; i < res.size(); i++)
+    for (size_t i = 0; i < resGetM.size(); i++)
     {
-        std::cerr << res[i].key << " " << res[i].name << std::endl;
+        std::cerr << resGetM[i].key << " " << resGetM[i].name << std::endl;
+    }
+
+    std::vector<Book> resGetS = GetS(1);
+
+    for (size_t i = 0; i < resGetS.size(); i++)
+    {
+        std::cerr << "Key: " << resGetS[i].key << " name: " << resGetS[i].name << " GenreCode: " << resGetS[i].genre_code << " ISBN: " << resGetS[i].isbn << std::endl;
     }
 
     return 0;
