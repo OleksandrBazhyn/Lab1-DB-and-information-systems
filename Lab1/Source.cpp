@@ -47,7 +47,7 @@ struct IndexGenre
 
 struct GarbageBook
 {
-    uint32_t IsFree = 0;
+    bool IsFree = false;
     long position;
 };
 
@@ -179,6 +179,12 @@ static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записув
 
     booksFileForRead.close();
 
+    // Якщо користувач хоче видалити запис за номером більшим ніж кількість записів
+    if (recordNumber > recordsCount)
+    {
+        std::cerr << "The record number exceeds the number of records." << std::endl;
+    }
+
     std::ofstream booksFile("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
     if (!booksFile.is_open())
@@ -195,7 +201,7 @@ static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записув
     booksFile.write(reinterpret_cast<const char*>(&recordsCount), sizeof(uint32_t)); // Зменшив показник кількості записів в booksFile.fl
 
     Book emptyBook;
-    std::streampos delRecordPos = recordNumber * sizeof(Book) + sizeof(uint32_t);
+    std::streampos delRecordPos = (recordNumber - 1) * sizeof(Book) + sizeof(uint32_t);
 
     booksFile.seekp(delRecordPos, std::ios::beg);
     booksFile.write(reinterpret_cast<const char*>(&emptyBook), sizeof(Book));
@@ -216,7 +222,7 @@ static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записув
     }
     booksGarbageFile.seekp(0, std::ios::end);
 
-    GarbageBook garbagebook = { 1, delRecordPos };
+    GarbageBook garbagebook = { false, delRecordPos };
     booksGarbageFile.write(reinterpret_cast<const char*>(&garbagebook), sizeof(GarbageBook));
 
     booksGarbageFile.flush();
@@ -439,16 +445,16 @@ int main()
         uint32_t gc = rand() % (50 - 1 + 1) + 1;
         Book f(i, gc, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, name.c_str());
         AddBook(f);
-    }
-    */
+    }*/
+    
     /*
     Book f(0, 1, 22222222, "testBook");
     AddBook(f); // Додано тестову книгу з кодом жанру 1
     */
-    Book f(0, 1, 22222222, "testBook");
-    AddBook(f);
 
-    DelS(1); // не видалилось..
+    // DelS(1);
+    // Book f(0, 1, 22222222, "testBook");
+    // AddBook(f);    
 
     // Випробуємо GetM
     std::vector<Genre> resGetM = GetM(1);
