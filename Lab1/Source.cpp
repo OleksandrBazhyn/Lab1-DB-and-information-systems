@@ -183,6 +183,7 @@ static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записув
     if (recordNumber > recordsCount)
     {
         std::cerr << "The record number exceeds the number of records." << std::endl;
+        return;
     }
 
     std::ofstream booksFile("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
