@@ -23,6 +23,12 @@ struct Book
     }
 };
 
+struct GarbageBook
+{
+    bool IsFree = false;
+    long position;
+};
+
 struct Genre
 {
     uint32_t key = 0;
@@ -45,13 +51,13 @@ struct IndexGenre
     long position; // В теорії key * sizeof(Genre) + sizeof(uint32_t)
 };
 
-struct GarbageBook
+struct GarbageGenre
 {
     bool IsFree = false;
     long position;
 };
 
-std::vector<Genre> GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
+static Genre GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
     std::ifstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in);
     
     if (!indexGenresFile.is_open())
@@ -68,8 +74,7 @@ std::vector<Genre> GetM(uint32_t GenreKey) { // Використовує індексну таблицю. С
 
     // Зчитати індекс з файлу
     IndexGenre currentIndex;
-    std::vector<IndexGenre> neededIndexesGenre = {};
-    bool foundAll = false;
+    bool notFound = true;
 
     indexGenresFile.seekg(0, std::ios::beg);
 
@@ -78,43 +83,37 @@ std::vector<Genre> GetM(uint32_t GenreKey) { // Використовує індексну таблицю. С
         indexGenresFile.read(reinterpret_cast<char*>(&currentIndex), sizeof(IndexGenre));
         if (indexGenresFile.eof())
         {
+            std::cerr << "The Genre has been does not found." << std::endl;
             break;
         }
         if (currentIndex.key == GenreKey)
         {
-            neededIndexesGenre.push_back(currentIndex);
-            foundAll = true;
+            notFound = false;
+            break;
         }        
+    }
+    if (notFound)
+    {
+        return { 0, "\0" };
     }
 
     indexGenresFile.close();
 
-    if (foundAll)
+    std::ifstream genresFile("genresFile.fl", std::ios::binary | std::ios::in);
+    if (!genresFile.is_open())
     {
-        std::ifstream genresFile("genresFile.fl", std::ios::binary | std::ios::in);
-        if (!genresFile.is_open())
-        {
-            std::cerr << "Unable to open file genresFile.fl" << std::endl;
-            throw std::runtime_error("Unable to open file genresFile.fl");
-        }
-
-        std::vector<Genre> neededGenres(neededIndexesGenre.size());
-
-        for (size_t i = 0; i < neededIndexesGenre.size(); i++)
-        {
-            // Перейти до позиції запису в основному файлі
-            genresFile.seekg(neededIndexesGenre[i].position, std::ios::beg);
-
-            genresFile.read(reinterpret_cast<char*>(&neededGenres[i]), sizeof(Genre));
-
-            genresFile.close();
-        }
-        return neededGenres;
+        std::cerr << "Unable to open file genresFile.fl" << std::endl;
+        throw std::runtime_error("Unable to open file genresFile.fl");
     }
-    else
-    {
-        std::cerr << "Genre not found" << std::endl;
-    }
+
+    // Перейти до позиції запису в основному файлі
+    genresFile.seekg(currentIndex.position, std::ios::beg);
+    Genre res;
+    genresFile.read(reinterpret_cast<char*>(&res), sizeof(Genre));
+
+    genresFile.close();
+
+    return res;
 }
 
 std::vector<Book> GetS(uint32_t genreCode) {
@@ -185,6 +184,11 @@ static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записув
         std::cerr << "The record number exceeds the number of records." << std::endl;
         return;
     }
+    if (recordNumber == 0)
+    {
+        std::cerr << "We do not have 0th record." << std::endl;
+        return;
+    }
 
     std::ofstream booksFile("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
@@ -213,7 +217,8 @@ static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записув
     // Занотовую в якій позиції є видалена (зайнята порожньою структурою) пам'ять
     std::ofstream booksGarbageFile("booksGarbageFile.gb", std::ios::binary | std::ios::in | std::ios::out);
 
-    if (!booksGarbageFile.is_open()) {
+    if (!booksGarbageFile.is_open())
+    {
         booksGarbageFile = std::ofstream("booksGarbageFile.gb", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
         if (!booksGarbageFile.is_open())
         {
@@ -228,6 +233,65 @@ static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записув
 
     booksGarbageFile.flush();
     booksGarbageFile.close();
+}
+
+// Знаходить адресу(позицію) запису в основному файлі через індексну таблицю, видаляє запис з основної таблиці, підзаписи ще та з індексної таблиці
+static void DelM(uint32_t recordNumber)
+{
+    std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!genresFileForRead.is_open()) {
+        genresFileForRead = std::ifstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!genresFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
+    }
+
+    // Дізнатися кількість записів в файлі. Ця інформація на початку файлу (header)
+    genresFileForRead.seekg(0, std::ios::beg);
+    uint32_t recordsCount = 0;
+    genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+
+    genresFileForRead.close();
+
+    if (recordNumber > recordsCount)
+    {
+        std::cerr << "The record number exceeds the number of records" << std::endl;
+        return;
+    }
+    if (recordNumber == 0)
+    {
+        std::cerr << "We do not have 0th record." << std::endl;
+        return;
+    }
+
+    // Спроєктуємо індексну таблицю в оперативну пам'ять. В std::vector<IndexGenre> IndexGenreTable
+    std::ifstream indexGenresFileForRead("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
+
+    if (!indexGenresFileForRead.is_open()) {
+        std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
+        throw std::runtime_error("Unable to open file indexGenresFile.ind");
+    }
+    indexGenresFileForRead.seekg(0, std::ios::end);
+
+    IndexGenre tmp;
+    std::vector<IndexGenre> IndexGenreTable;
+
+    while (!indexGenresFileForRead.eof())
+    {
+        indexGenresFileForRead.read(reinterpret_cast<char*>(&tmp), sizeof(IndexGenre));
+        IndexGenreTable.push_back(tmp);
+    }
+
+    indexGenresFileForRead.close();
+    
+    // Видаляю master запис
+    std::ofstream genresFile("genresFile.fl", std::ios::binary | std::ios::out);
+
+
+    // Записати відображення IndexGenreTable в індексну таблицю
 }
 
 void AddGenre(Genre& newGenre) {
@@ -403,7 +467,7 @@ void AddBook(Book& newBook) {
     if (found)
     {
         booksFile.seekp(garbageBook.position, std::ios::beg);
-        newBook.key = (garbageBook.position - 4) / sizeof(Book);
+        newBook.key = (garbageBook.position - 4) / sizeof(Book) + 1;
         booksFile.write(reinterpret_cast<const char*>(&newBook), sizeof(Book));
 
         recordsCount++;
@@ -453,17 +517,14 @@ int main()
     AddBook(f); // Додано тестову книгу з кодом жанру 1
     */
 
-    // DelS(1);
-    // Book f(0, 1, 22222222, "testBook");
-    // AddBook(f);    
+    /*DelS(1);
+    Book f(0, 1, 22222222, "testBook");
+    AddBook(f);*/
 
     // Випробуємо GetM
-    std::vector<Genre> resGetM = GetM(1);
+    Genre resGetM = GetM(100);
 
-    for (size_t i = 0; i < resGetM.size(); i++)
-    {
-        std::cout << resGetM[i].key << " " << resGetM[i].name << std::endl;
-    }
+    std::cout << resGetM.key << " " << resGetM.name << std::endl;
 
     std::vector<Book> resGetS = GetS(1);
 
