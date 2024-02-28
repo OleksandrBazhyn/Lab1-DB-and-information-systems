@@ -268,13 +268,17 @@ static void DelM(uint32_t recordNumber)
     }
 
     // Спроєктуємо індексну таблицю в оперативну пам'ять. В std::vector<IndexGenre> IndexGenreTable
-    std::ifstream indexGenresFileForRead("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
+    std::ifstream indexGenresFileForRead("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out);
 
     if (!indexGenresFileForRead.is_open()) {
-        std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
-        throw std::runtime_error("Unable to open file indexGenresFile.ind");
+        indexGenresFileForRead = std::ifstream("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!indexGenresFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
+            throw std::runtime_error("Unable to open file indexGenresFile.ind");
+        }
     }
-    indexGenresFileForRead.seekg(0, std::ios::end);
+    indexGenresFileForRead.seekg(0, std::ios::beg);
 
     IndexGenre tmp;
     std::vector<IndexGenre> IndexGenreTable;
@@ -289,9 +293,76 @@ static void DelM(uint32_t recordNumber)
     
     // Видаляю master запис
     std::ofstream genresFile("genresFile.fl", std::ios::binary | std::ios::out);
+    if (!genresFile.is_open()) {
+        genresFile = std::ofstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!genresFile.is_open())
+        {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
+    }
+    genresFile.seekp(IndexGenreTable[recordNumber - 1].position, std::ios::beg);
 
+    Genre genreTmp;
+    genresFile.write(reinterpret_cast<const char*>(&genreTmp), sizeof(Genre));
+
+    genresFile.flush();
+    genresFile.close();
+
+
+    // Знаходжу підзаписи (для DelS мені треба їх ключі)
+    std::ifstream booksFile("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!booksFile.is_open()) {
+        booksFile = std::ifstream("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!booksFile.is_open())
+        {
+            std::cerr << "Unable to open file booksFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file booksFile.fl");
+        }
+    }
+    booksFile.seekg(sizeof(uint32_t), std::ios::beg);
+
+    std::vector<uint32_t> booksKeys;
+    Book bookTmp;
+
+    while (true)
+    {
+        booksFile.read(reinterpret_cast<char*>(&bookTmp), sizeof(Book));
+        if (booksFile.eof())
+        {
+            break;
+        }
+        if (bookTmp.genre_code == recordNumber)
+        {
+            booksKeys.push_back(bookTmp.key);
+        }
+    }
+
+    booksFile.close();
+
+    // Видалити підзаписи
+    for (size_t i = 0; i < booksKeys.size(); i++)
+    {
+        DelS(booksKeys[i]);
+    }
 
     // Записати відображення IndexGenreTable в індексну таблицю
+    std::ofstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+
+    if (!indexGenresFile.is_open()) {
+        std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
+        throw std::runtime_error("Unable to open file indexGenresFile.ind");
+    }
+    indexGenresFile.seekp(0, std::ios::beg);
+
+    for (size_t i = 0; i < IndexGenreTable.size(); i++)
+    {
+        indexGenresFile.write(reinterpret_cast<const char*>(&(IndexGenreTable[i])), sizeof(IndexGenre));
+    }
+
+    indexGenresFile.flush();
+    indexGenresFile.close();
 }
 
 void AddGenre(Genre& newGenre) {
