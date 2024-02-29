@@ -51,12 +51,6 @@ struct IndexGenre
     long position; // В теорії key * sizeof(Genre) + sizeof(uint32_t)
 };
 
-struct GarbageGenre
-{
-    bool IsFree = false;
-    long position;
-};
-
 // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
 static Genre GetM(uint32_t GenreKey)
 {
@@ -231,7 +225,7 @@ static void DelS(uint32_t recordNumber)
     }
     booksGarbageFile.seekp(0, std::ios::end);
 
-    GarbageBook garbagebook = { false, delRecordPos };
+    GarbageBook garbagebook = { true, delRecordPos };
     booksGarbageFile.write(reinterpret_cast<const char*>(&garbagebook), sizeof(GarbageBook));
 
     booksGarbageFile.flush();
@@ -291,16 +285,14 @@ static void DelM(uint32_t recordNumber)
     IndexGenre tmp;
     std::vector<IndexGenre> IndexGenreTable;
 
-    while (!indexGenresFileForRead.eof())
-    {
-        indexGenresFileForRead.read(reinterpret_cast<char*>(&tmp), sizeof(IndexGenre));
+    while (indexGenresFileForRead.read(reinterpret_cast<char*>(&tmp), sizeof(IndexGenre))) {
         IndexGenreTable.push_back(tmp);
     }
 
     indexGenresFileForRead.close();
     
     // Видаляю master запис
-    std::ofstream genresFile("genresFile.fl", std::ios::binary | std::ios::out);
+    std::ofstream genresFile("genresFile.fl", std::ios::binary | std::ios::out | std::ios::in);
     if (!genresFile.is_open()) {
         genresFile = std::ofstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
         if (!genresFile.is_open())
@@ -515,18 +507,17 @@ static void AddBook(Book& newBook) {
     GarbageBook garbageBook;
     bool found = false;
 
-    while (true)
+    booksGarbageFile.read(reinterpret_cast<char*>(&garbageBook), sizeof(GarbageBook));
+    if (garbageBook.IsFree == true)
     {
-        booksGarbageFile.read(reinterpret_cast<char*>(&garbageBook), sizeof(GarbageBook));
-        if (garbageBook.IsFree == 1)
-        {
-            found = true;
-            break;
-        }
-        if (booksGarbageFile.eof())
-        {
-            break;
-        }
+        found = true;
+    }
+
+    booksGarbageFile.seekg(0, std::ios::beg);
+    GarbageBook tmp;
+    std::vector<GarbageBook> garbageBookList;
+    while (booksGarbageFile.read(reinterpret_cast<char*>(&tmp), sizeof(GarbageBook))) {
+        garbageBookList.push_back(tmp);
     }
 
     booksFileForRead.close();
@@ -561,6 +552,26 @@ static void AddBook(Book& newBook) {
 
         booksFile.flush();
         booksFile.close();
+
+        // Перезаписую смітник видаливши запис про використану ділянку (першу)
+        std::ofstream booksGarbageFile("booksGarbageFile.gb", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+
+        if (!booksGarbageFile.is_open()) {
+            if (!booksGarbageFile.is_open())
+            {
+                std::cerr << "Unable to open file booksGarbageFile.gb" << std::endl;
+                throw std::runtime_error("Unable to open file booksGarbageFile.gb");
+            }
+        }
+
+        garbageBookList.erase(garbageBookList.begin());
+        booksGarbageFile.seekp(0, std::ios::beg);
+        for (size_t i = 0; i < garbageBookList.size(); i++)
+        {
+            booksGarbageFile.write(reinterpret_cast<const char*>(&(garbageBookList[i])), sizeof(GarbageBook));
+        }
+        booksGarbageFile.flush();
+        booksGarbageFile.close();
     }
     else
     {
@@ -590,26 +601,28 @@ static void CreateFiles()
     for (size_t i = 1; i < 50; i++)
     {
         std::string name = "Book" + std::to_string(i);
-        uint32_t gc = rand() % (50 - 1 + 1) + 1;
-        Book f(i, gc, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, name.c_str());
+        // uint32_t gc = rand() % (50 - 1 + 1) + 1;
+        // Book f(i, gc, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, name.c_str());
+        Book f(i, i, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, name.c_str());
         AddBook(f);
     }
 }
 
 int main()
 {    
-    //CreateFiles();
+    // CreateFiles();
+
     /*
     Book f(0, 1, 22222222, "testBook");
     AddBook(f); // Додано тестову книгу з кодом жанру 1
     */
 
-    /*DelS(1);
+    // DelM(1);
     Book f(0, 1, 22222222, "testBook");
-    AddBook(f);*/
+    AddBook(f);
 
     // Випробуємо GetM
-    Genre resGetM = GetM(100);
+    Genre resGetM = GetM(1);
 
     std::cout << resGetM.key << " " << resGetM.name << std::endl;
 
