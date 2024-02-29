@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <random>
+#include <map>
 
 struct Book
 {
@@ -724,6 +725,76 @@ static void UpdateM(uint32_t recordNumber, Genre& newGenre)
 
     genresFile.flush();
     genresFile.close();
+}
+
+// Підраховує кількість записів загалом та кількість підзаписів для обраного запису
+static std::map<std::string, int> CalM(uint32_t recordNumber)
+{
+    std::map<std::string, int> res
+    {
+        {"Count of records", 0},
+        {"Count of subrecords", 0}
+    };
+
+    std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!genresFileForRead.is_open()) {
+        genresFileForRead = std::ifstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!genresFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
+    }
+
+    // Дізнатися кількість записів в файлі. Ця інформація на початку файлу (header)
+    genresFileForRead.seekg(0, std::ios::beg);
+    uint32_t recordsCount = 0;
+    genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+
+    res["Count of records"] = recordsCount;
+
+    genresFileForRead.close();
+
+    if (recordNumber > recordsCount)
+    {
+        std::cerr << "The record number exceeds the number of records." << std::endl;
+        return res;
+    }
+    if (recordNumber == 0)
+    {
+        std::cerr << "We do not have 0th record." << std::endl;
+        return res;
+    }
+
+    std::vector<Book> subrecords = GetS(recordNumber);
+    res["Count of subrecords"] = subrecords.size();
+
+    return res;
+}
+
+// Підраховує кількість записів в slave файлі
+static int CalS(uint32_t recordNumber)
+{
+    std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!booksFileForRead.is_open())
+    {
+        booksFileForRead = std::ifstream("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!booksFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file booksFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file booksFile.fl");
+        }
+    }
+
+    booksFileForRead.seekg(0, std::ios::beg);
+    uint32_t res = NULL;
+    booksFileForRead.read(reinterpret_cast<char*>(&res), sizeof(uint32_t));
+
+    booksFileForRead.close();
+
+    return res;
 }
 
 static void CreateFiles()
