@@ -57,7 +57,9 @@ struct GarbageGenre
     long position;
 };
 
-static Genre GetM(uint32_t GenreKey) { // Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
+// Використовує індексну таблицю. Спочатку шукає ключ, потім бере адресу в fl файлі і повертає об'єкт звідти
+static Genre GetM(uint32_t GenreKey)
+{
     std::ifstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in);
     
     if (!indexGenresFile.is_open())
@@ -157,7 +159,8 @@ std::vector<Book> GetS(uint32_t genreCode) {
     }
 }
 
-static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записування на обраний запис пустої струкутури (все по нулях) та в занотовувані цієї позиції в booksGarbageFile.gb спеціальною структурою. При додаванні елементів відповідний метод пукатиме серед booksGarbageFile.gb інформацію де може записати новий запис
+// Видалення відбувається шляхом записування на обраний запис пустої струкутури (все по нулях) та в занотовувані цієї позиції в booksGarbageFile.gb спеціальною структурою. При додаванні елементів відповідний метод пукатиме серед booksGarbageFile.gb інформацію де може записати новий запис
+static void DelS(uint32_t recordNumber)
 {
     std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
@@ -235,7 +238,7 @@ static void DelS(uint32_t recordNumber) // Видалення відбувається шляхом записув
     booksGarbageFile.close();
 }
 
-// Знаходить адресу(позицію) запису в основному файлі через індексну таблицю, видаляє запис з основної таблиці, підзаписи ще та з індексної таблиці
+// Знаходить адресу(позицію) запису в основному файлі через індексну таблицю, видаляю запис з основної таблиці, підзаписи в іншому файлі та перезаписую індексну таблицю (прибираю останій елемент). Для економії місця(збору сміття), треба записати останій елемент на місце попереднього змінивши йому ключ в genresFiles.fl та в індексній таблиці видалити останній елемент, бо та позиція і ключ вже не існують в основному файлові
 static void DelM(uint32_t recordNumber)
 {
     std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
@@ -253,6 +256,11 @@ static void DelM(uint32_t recordNumber)
     genresFileForRead.seekg(0, std::ios::beg);
     uint32_t recordsCount = 0;
     genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+
+    // Записую в оперативну пам'ять останій елемент
+    genresFileForRead.seekg(-sizeof(Genre), std::ios::end);
+    Genre lastGenre;
+    genresFileForRead.read(reinterpret_cast<char*>(&lastGenre), sizeof(Genre));
 
     genresFileForRead.close();
 
@@ -301,8 +309,12 @@ static void DelM(uint32_t recordNumber)
             throw std::runtime_error("Unable to open file genresFile.fl");
         }
     }
+    // Записую на місце видаленого запису останній елемент (у мене є його клон в оперативній пам'яті), змінивши його ключ. Останній елемент видаляю
     genresFile.seekp(IndexGenreTable[recordNumber - 1].position, std::ios::beg);
+    lastGenre.key = recordNumber;
+    genresFile.write(reinterpret_cast<const char*>(&lastGenre), sizeof(Genre));
 
+    genresFile.seekp(-sizeof(Genre), std::ios::end);
     Genre genreTmp;
     genresFile.write(reinterpret_cast<const char*>(&genreTmp), sizeof(Genre));
 
@@ -347,14 +359,16 @@ static void DelM(uint32_t recordNumber)
         DelS(booksKeys[i]);
     }
 
-    // Записати відображення IndexGenreTable в індексну таблицю
-    std::ofstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+    // Записати відображення IndexGenreTable в індексну таблицю. Прибираю останній запис
+    std::ofstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc); // Переписую файл начисто
 
     if (!indexGenresFile.is_open()) {
         std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
         throw std::runtime_error("Unable to open file indexGenresFile.ind");
     }
     indexGenresFile.seekp(0, std::ios::beg);
+
+    IndexGenreTable.pop_back();
 
     for (size_t i = 0; i < IndexGenreTable.size(); i++)
     {
@@ -365,7 +379,7 @@ static void DelM(uint32_t recordNumber)
     indexGenresFile.close();
 }
 
-void AddGenre(Genre& newGenre) {
+static void AddGenre(Genre& newGenre) {
     std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
     if (!genresFileForRead.is_open()) {
@@ -466,7 +480,7 @@ void AddGenre(Genre& newGenre) {
     indexGenresFile.close();
 }
 
-void AddBook(Book& newBook) {
+static void AddBook(Book& newBook) {
     std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
     if (!booksFileForRead.is_open()) {
@@ -615,4 +629,3 @@ int main()
 
     return 0;
 }
-
