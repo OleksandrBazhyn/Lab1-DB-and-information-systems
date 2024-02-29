@@ -258,7 +258,7 @@ static void DelM(uint32_t recordNumber)
     genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
 
     // Записую в оперативну пам'ять останій елемент
-    genresFileForRead.seekg(-sizeof(Genre), std::ios::end);
+    genresFileForRead.seekg(-static_cast<std::streamsize>(sizeof(Genre)), std::ios::end);
     Genre lastGenre;
     genresFileForRead.read(reinterpret_cast<char*>(&lastGenre), sizeof(Genre));
 
@@ -314,7 +314,7 @@ static void DelM(uint32_t recordNumber)
     lastGenre.key = recordNumber;
     genresFile.write(reinterpret_cast<const char*>(&lastGenre), sizeof(Genre));
 
-    genresFile.seekp(-sizeof(Genre), std::ios::end);
+    genresFileForRead.seekg(-static_cast<std::streamsize>(sizeof(Genre)), std::ios::end);
     Genre genreTmp;
     genresFile.write(reinterpret_cast<const char*>(&genreTmp), sizeof(Genre));
 
@@ -578,25 +578,27 @@ static void AddBook(Book& newBook) {
     }
 }
 
-int main()
+static void CreateFiles()
 {
-    /*
     for (size_t i = 1; i < 50; i++)
     {
         std::string name = "Genre" + std::to_string(i);
         Genre f(i, name.c_str());
         AddGenre(f);
     }
-    */
-    /*
+
     for (size_t i = 1; i < 50; i++)
     {
         std::string name = "Book" + std::to_string(i);
         uint32_t gc = rand() % (50 - 1 + 1) + 1;
         Book f(i, gc, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, name.c_str());
         AddBook(f);
-    }*/
-    
+    }
+}
+
+int main()
+{    
+    //CreateFiles();
     /*
     Book f(0, 1, 22222222, "testBook");
     AddBook(f); // Додано тестову книгу з кодом жанру 1
