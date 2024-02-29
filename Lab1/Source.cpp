@@ -371,7 +371,7 @@ static void DelM(uint32_t recordNumber)
     indexGenresFile.close();
 }
 
-static void AddGenre(Genre& newGenre) {
+static void InsertM(Genre& newGenre) {
     std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
     if (!genresFileForRead.is_open()) {
@@ -472,7 +472,7 @@ static void AddGenre(Genre& newGenre) {
     indexGenresFile.close();
 }
 
-static void AddBook(Book& newBook) {
+static void InsertS(Book& newBook) {
     std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
     if (!booksFileForRead.is_open()) {
@@ -595,7 +595,7 @@ static void CreateFiles()
     {
         std::string name = "Genre" + std::to_string(i);
         Genre f(i, name.c_str());
-        AddGenre(f);
+        InsertM(f);
     }
 
     for (size_t i = 1; i < 50; i++)
@@ -604,7 +604,7 @@ static void CreateFiles()
         // uint32_t gc = rand() % (50 - 1 + 1) + 1;
         // Book f(i, gc, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, name.c_str());
         Book f(i, i, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, name.c_str());
-        AddBook(f);
+        InsertS(f);
     }
 }
 
@@ -619,7 +619,7 @@ int main()
 
     // DelM(1);
     Book f(0, 1, 22222222, "testBook");
-    AddBook(f);
+    InsertS(f);
 
     // Випробуємо GetM
     Genre resGetM = GetM(1);
