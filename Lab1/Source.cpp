@@ -589,6 +589,143 @@ static void InsertS(Book& newBook) {
     }
 }
 
+
+static void UpdateS(uint32_t recordNumber, Book& newBook)
+{
+    std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!booksFileForRead.is_open())
+    {
+        booksFileForRead = std::ifstream("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!booksFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file booksFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file booksFile.fl");
+        }
+    }
+
+    // Дізнатися кількість записів в файлі. Ця інформація на початку файлу (header)
+    booksFileForRead.seekg(0, std::ios::beg);
+    uint32_t recordsCount = 0;
+    booksFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+
+    booksFileForRead.close();
+
+    // Якщо користувач хоче оновити запис за номером більшим ніж кількість записів
+    if (recordNumber > recordsCount)
+    {
+        std::cerr << "The record number exceeds the number of records." << std::endl;
+        return;
+    }
+    if (recordNumber == 0)
+    {
+        std::cerr << "We do not have 0th record." << std::endl;
+        return;
+    }
+
+    // Оновлюю запис
+    std::ofstream booksFile("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!booksFile.is_open())
+    {
+        booksFile = std::ofstream("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!booksFile.is_open())
+        {
+            std::cerr << "Unable to open file booksFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file booksFile.fl");
+        }
+    }
+
+    std::streampos recordPos = (recordNumber - 1) * sizeof(Book) + sizeof(uint32_t);
+    newBook.key = recordNumber;
+
+    booksFile.seekp(recordPos, std::ios::beg);
+    booksFile.write(reinterpret_cast<const char*>(&newBook), sizeof(Book));
+
+    booksFile.flush();
+    booksFile.close();
+}
+
+static void UpdateM(uint32_t recordNumber, Genre& newGenre)
+{
+    std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!genresFileForRead.is_open()) {
+        genresFileForRead = std::ifstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!genresFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
+    }
+
+    // Дізнатися кількість записів в файлі. Ця інформація на початку файлу (header)
+    genresFileForRead.seekg(0, std::ios::beg);
+    uint32_t recordsCount = 0;
+    genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+
+    genresFileForRead.close();
+
+    if (recordNumber > recordsCount)
+    {
+        std::cerr << "The record number exceeds the number of records" << std::endl;
+        return;
+    }
+    if (recordNumber == 0)
+    {
+        std::cerr << "We do not have 0th record." << std::endl;
+        return;
+    }
+
+    // Знаходимо адресу потрібного запису по індекній таблиці
+    std::ifstream indexGenresFileForRead("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!indexGenresFileForRead.is_open()) {
+        indexGenresFileForRead = std::ifstream("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!indexGenresFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
+            throw std::runtime_error("Unable to open file indexGenresFile.ind");
+        }
+    }
+    indexGenresFileForRead.seekg(0, std::ios::beg);
+
+    IndexGenre neededGenreIndex;
+    while (true)
+    {
+        indexGenresFileForRead.read(reinterpret_cast<char*>(&neededGenreIndex), sizeof(IndexGenre));
+        if (indexGenresFileForRead.eof())
+        {
+            std::cerr << "The Genre has been does not found." << std::endl;
+            break;
+        }
+        if (neededGenreIndex.key == recordNumber)
+        {
+            break;
+        }
+    }
+
+    indexGenresFileForRead.close();
+
+    // Оновлюю потрібний запис
+    std::ofstream genresFile("genresFile.fl", std::ios::binary | std::ios::out | std::ios::in);
+    if (!genresFile.is_open()) {
+        genresFile = std::ofstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!genresFile.is_open())
+        {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
+    }
+    // Записую на місце потрібного запису новий запис, змінивши того ключ
+    genresFile.seekp(neededGenreIndex.position, std::ios::beg);
+    newGenre.key = recordNumber;
+    genresFile.write(reinterpret_cast<const char*>(&newGenre), sizeof(Genre));
+
+    genresFile.flush();
+    genresFile.close();
+}
+
 static void CreateFiles()
 {
     for (size_t i = 1; i < 50; i++)
@@ -618,8 +755,12 @@ int main()
     */
 
     // DelM(1);
-    Book f(0, 1, 22222222, "testBook");
-    InsertS(f);
+    // Book f(0, 1, 22222222, "testBookUpdate");
+    // InsertS(f);
+    // UpdateS(1, f);
+
+    // Genre g(1, "testGenreUpdate");
+    // UpdateM(1, g);
 
     // Випробуємо GetM
     Genre resGetM = GetM(1);
