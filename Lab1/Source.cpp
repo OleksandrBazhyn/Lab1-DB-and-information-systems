@@ -799,7 +799,32 @@ static int CalS(uint32_t recordNumber)
 
 static void UtM()
 {
+    std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
+    if (!genresFileForRead.is_open())
+    {
+        genresFileForRead = std::ifstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!genresFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file genresFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file genresFile.fl");
+        }
+    }
+
+    genresFileForRead.seekg(sizeof(uint32_t), std::ios::beg);
+
+    std::cout << "#\tName" << std::endl;
+
+    Genre tmp;
+
+    while (true) {
+        genresFileForRead.read(reinterpret_cast<char*>(&tmp), sizeof(Genre));
+        if (genresFileForRead.eof()) {
+            break;
+        }
+        std::cout << tmp.key << "\t"
+            << tmp.name << std::endl;
+    }
 }
 
 static void UtS()
@@ -897,7 +922,7 @@ int main()
     std::cout << std::endl << std::endl;
     std::cout << std::endl << std::endl;
 
-    UtS();
+    UtM();
 
     return 0;
 }
