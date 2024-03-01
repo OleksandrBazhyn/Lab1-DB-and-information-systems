@@ -797,6 +797,43 @@ static int CalS(uint32_t recordNumber)
     return res;
 }
 
+static void UtM()
+{
+
+}
+
+static void UtS()
+{
+    std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+
+    if (!booksFileForRead.is_open())
+    {
+        booksFileForRead = std::ifstream("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!booksFileForRead.is_open())
+        {
+            std::cerr << "Unable to open file booksFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file booksFile.fl");
+        }
+    }
+
+    booksFileForRead.seekg(sizeof(uint32_t), std::ios::beg);
+
+    std::cout << "#\tName\t\tGenre Code\tISBN" << std::endl;
+
+    Book tmp;
+
+    while (true) {
+        booksFileForRead.read(reinterpret_cast<char*>(&tmp), sizeof(Book));
+        if (booksFileForRead.eof()) {
+            break;
+        }
+        std::cout << tmp.key << "\t"
+            << tmp.name << "\t\t"
+            << static_cast<int>(tmp.genre_code) << "\t\t"
+            << tmp.isbn << std::endl;
+    }
+}
+
 static void CreateFiles()
 {
     for (size_t i = 1; i < 50; i++)
@@ -847,12 +884,20 @@ int main()
     }
     
     std::cout << std::endl << std::endl;
+    std::cout << std::endl << std::endl;
 
+    std::cout << "CalS 1: " << CalS(1) << std::endl;
+    std::map<std::string, int> calm = CalM(1);
+    std::cout << "CalM 1: " << calm["Count of records"] << "    CalM 1 subs: " << calm["Count of subrecords"] << std::endl;
 
-    // Book f(0, 1, 32222222, "testBook2");
-    // AddBook(f);
+    std::cout << std::endl << std::endl;
+    std::cout << std::endl << std::endl;
+    std::cout << std::endl << std::endl;
+    std::cout << std::endl << std::endl;
+    std::cout << std::endl << std::endl;
+    std::cout << std::endl << std::endl;
 
-
+    UtS();
 
     return 0;
 }
