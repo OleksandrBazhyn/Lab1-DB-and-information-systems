@@ -797,6 +797,7 @@ static int CalS(uint32_t recordNumber)
     return res;
 }
 
+// Відображає записи з master-file та підзаписи
 static void UtM()
 {
     std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
@@ -810,23 +811,38 @@ static void UtM()
             throw std::runtime_error("Unable to open file genresFile.fl");
         }
     }
+    genresFileForRead.seekg(0, std::ios::beg);
+    
+    uint32_t recordsCount = 0;
+    genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
 
-    genresFileForRead.seekg(sizeof(uint32_t), std::ios::beg);
-
-    std::cout << "#\tName" << std::endl;
+    std::cout << "ID\tName" << std::endl;
 
     Genre tmp;
 
-    while (true) {
+    for(size_t i = 1; i != (recordsCount + 1); i++)
+    {
         genresFileForRead.read(reinterpret_cast<char*>(&tmp), sizeof(Genre));
-        if (genresFileForRead.eof()) {
+        if (genresFileForRead.eof())
+        {
             break;
         }
         std::cout << tmp.key << "\t"
             << tmp.name << std::endl;
+
+        std::vector<Book> subrecords = GetS(i);
+        
+        std::cout << "subrecords: " << std::endl;
+        std::cout << "\t\tBook ID\t\tName\t\tGenre Code\t\tISBN" << std::endl;
+        for (size_t j = 0; j < subrecords.size(); j++)
+        {
+            std::cout << "\t\t" << subrecords[j].key << "\t\t" << subrecords[j].name << "\t\t" << subrecords[j].genre_code << "\t\t" << subrecords[j].isbn << std::endl;
+        }
+        std::cout << std::endl << std::endl;
     }
 }
 
+// Відображає записи з slave-file
 static void UtS()
 {
     std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
@@ -843,7 +859,7 @@ static void UtS()
 
     booksFileForRead.seekg(sizeof(uint32_t), std::ios::beg);
 
-    std::cout << "#\tName\t\tGenre Code\tISBN" << std::endl;
+    std::cout << "ID\tName\t\tGenre Code\tISBN" << std::endl;
 
     Book tmp;
 
