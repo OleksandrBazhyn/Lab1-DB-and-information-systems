@@ -18,6 +18,11 @@ struct Book
         name[0] = '\0';
     }
 
+    Book(uint32_t gc, uint32_t i, const char* n) : key(0), genre_code(gc), isbn(i)
+    {
+        strncpy_s(name, n, _TRUNCATE);
+    }
+
     Book(size_t k, uint32_t gc, uint32_t i, const char* n) : key(k), genre_code(gc), isbn(i)
     {
         strncpy_s(name, n, _TRUNCATE);
@@ -38,6 +43,11 @@ struct Genre
     Genre() : key(0)
     {
         name[0] = '\0';
+    }
+
+    Genre(const char* n) : key(0)
+    {
+        strncpy_s(name, n, _TRUNCATE);
     }
 
     Genre(uint32_t k, const char* n) : key(k)
@@ -820,7 +830,7 @@ static void UtM()
 
     Genre tmp;
 
-    for(size_t i = 1; i != (recordsCount + 1); i++)
+    for (size_t i = 1; i < (recordsCount + 1); i++)
     {
         genresFileForRead.read(reinterpret_cast<char*>(&tmp), sizeof(Genre));
         if (genresFileForRead.eof())
@@ -895,7 +905,10 @@ static void CreateFiles()
 }
 
 int main()
-{    
+{
+    Genre newGenre = {1, ""}
+    InsertM();
+
     // CreateFiles();
 
     /*
