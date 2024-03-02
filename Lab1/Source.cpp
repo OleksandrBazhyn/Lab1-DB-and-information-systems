@@ -267,7 +267,7 @@ static void DelM(uint32_t recordNumber)
     genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
 
     // Записую в оперативну пам'ять останій елемент
-    genresFileForRead.seekg(-static_cast<std::streamsize>(sizeof(Genre)), std::ios::end);
+    genresFileForRead.seekg(static_cast<std::streamsize>(sizeof(Genre) * (recordsCount - 1) + sizeof(uint32_t)), std::ios::beg);
     Genre lastGenre;
     genresFileForRead.read(reinterpret_cast<char*>(&lastGenre), sizeof(Genre));
 
@@ -321,9 +321,14 @@ static void DelM(uint32_t recordNumber)
     lastGenre.key = recordNumber;
     genresFile.write(reinterpret_cast<const char*>(&lastGenre), sizeof(Genre));
 
-    genresFile.seekp(-static_cast<std::streamsize>(sizeof(Genre)), std::ios::end);
+    genresFile.seekp(IndexGenreTable.back().position, std::ios::beg);
     Genre genreTmp;
     genresFile.write(reinterpret_cast<const char*>(&genreTmp), sizeof(Genre));
+
+    // Змінюю лічильник
+    genresFile.seekp(0, std::ios::beg);
+    recordsCount--;
+    genresFile.write(reinterpret_cast<const char*>(&recordsCount), sizeof(uint32_t));
 
     genresFile.flush();
     genresFile.close();
@@ -880,7 +885,7 @@ static void UtS()
 
     booksFileForRead.seekg(sizeof(uint32_t), std::ios::beg);
 
-    std::cout << "ID\tName\t\tGenre Code\tISBN" << std::endl;
+    std::cout << "ID\tName\t\t\t\tGenre Code\tISBN" << std::endl;
 
     Book tmp;
 
@@ -938,6 +943,12 @@ int main()
     InsertS(tmp);
     tmp = { 3, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book2 with genre3" };
     InsertS(tmp);
+    tmp = { 3, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book3 with genre3" };
+    InsertS(tmp);
+    tmp = { 4, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book1 with genre4" };
+    InsertS(tmp);
+    tmp = { 4, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book2 with genre4" };
+    InsertS(tmp);
 
     // ut-m, ut-s.
     std::cout << "Command used: UT-M" << std::endl;
@@ -945,11 +956,11 @@ int main()
     std::cout << std::endl;
     std::cout << "Command used: UT-S" << std::endl;
     UtS();
-    std::cout << std::endl;
+    std::cout << std::endl << std::endl;
 
     // Вилучити master-запис з двома підлеглими.
     DelM(1);
-    DelS(4);
+    DelM(3);
     DelS(3);
 
     // ut-m, ut-s.
@@ -958,10 +969,32 @@ int main()
     std::cout << std::endl;
     std::cout << "Command used: UT-S" << std::endl;
     UtS();
-    std::cout << std::endl;
+    std::cout << std::endl << std::endl;
 
     // Ввід ще одного master-запису та підлеглого до нього запису.
-    //Genre onegenre = GetM()
+    std::cout << "Creating new master record!" << std::endl
+        << "Input new genre name: " << std::endl;
+    std::string genrename;
+    std::cin >> genrename;
+    Genre newGenre(genrename.c_str());
+    InsertM(newGenre);
+    std::cout << "Master record creating is finished." << std::endl << std::endl;
+
+    std::cout << "Creating new slave record!" << std::endl
+        << "Input new book name: " << std::endl;
+    std::string bookname;
+    std::cin >> bookname;
+    Book newBook(5, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, bookname.c_str());
+    InsertS(newBook);
+    std::cout << "Slave record creating is finished." << std::endl << std::endl;
+
+    // ut-m, ut-s.
+    std::cout << "Command used: UT-M" << std::endl;
+    UtM();
+    std::cout << std::endl;
+    std::cout << "Command used: UT-S" << std::endl;
+    UtS();
+    std::cout << std::endl << std::endl;
 
     return 0;
 }
