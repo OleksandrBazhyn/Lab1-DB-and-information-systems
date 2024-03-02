@@ -961,9 +961,51 @@ int main()
         << "Input new book name: " << std::endl;
     std::string bookname;
     std::cin >> bookname;
-    Book newBook(5, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, bookname.c_str());
+    std::cout << "Input new book name: " << std::endl;
+    int bookGenreId;
+    std::cin >> bookGenreId;
+    Book newBook(bookGenreId, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, bookname.c_str());
     InsertS(newBook);
     std::cout << "Slave record creating is finished." << std::endl << std::endl;
+
+    // ut-m, ut-s.
+    std::cout << "Command used: UT-M" << std::endl;
+    UtM();
+    std::cout << std::endl;
+    std::cout << "Command used: UT-S" << std::endl;
+    UtS();
+    std::cout << std::endl << std::endl;
+
+    // Оновлення записів
+    std::cout << "Update master record!" << std::endl
+        << "Input ID of record you want to update: " << std::endl;
+    int genreId;
+    std::cin >> genreId;
+    if (genreId == NULL)
+    {
+        std::cout << "Please input integer" << std::endl;
+        std::cin >> genreId;
+    }
+    std::cout << "Input new genre name: " << std::endl;
+    std::cin >> genrename;
+    Genre updatedGenre(genrename.c_str());
+    UpdateM(genreId, updatedGenre);
+    std::cout << "Master record updating is finished." << std::endl << std::endl;
+
+    std::cout << "Update slave record!" << std::endl
+        << "Input ID of record you want to update: " << std::endl;
+    int bookId;
+    std::cin >> bookId;
+    if (bookId == NULL)
+    {
+        std::cout << "Please input integer" << std::endl;
+        std::cin >> bookId;
+    }
+    std::cout << "Input new book name: " << std::endl;
+    std::cin >> bookname;
+    Book updatedBook(bookId, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, bookname.c_str());
+    UpdateS(bookId, updatedBook);
+    std::cout << "Slave record updating is finished." << std::endl << std::endl;
 
     // ut-m, ut-s.
     std::cout << "Command used: UT-M" << std::endl;
