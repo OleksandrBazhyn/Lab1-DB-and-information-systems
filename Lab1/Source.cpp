@@ -961,7 +961,7 @@ int main()
         << "Input new book name: " << std::endl;
     std::string bookname;
     std::cin >> bookname;
-    std::cout << "Input new book name: " << std::endl;
+    std::cout << "Input new book Genre: " << std::endl;
     int bookGenreId;
     std::cin >> bookGenreId;
     Book newBook(bookGenreId, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, bookname.c_str());
