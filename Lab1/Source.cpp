@@ -392,23 +392,28 @@ static void DelM(uint32_t recordNumber)
 }
 
 static void InsertM(Genre& newGenre) {
-    std::ifstream genresFileForRead("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
+    // Оновлюємо індексну таблицю
+    std::ifstream indexGenresFileForRead("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out);
 
-    if (!genresFileForRead.is_open()) {
-        genresFileForRead = std::ifstream("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
-        if (!genresFileForRead.is_open())
+    if (!indexGenresFileForRead.is_open()) {
+        indexGenresFileForRead = std::ifstream("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!indexGenresFileForRead.is_open())
         {
-            std::cerr << "Unable to open file genresFile.fl" << std::endl;
-            throw std::runtime_error("Unable to open file genresFile.fl");
+            std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
+            throw std::runtime_error("Unable to open file indexGenresFile.ind");
         }
     }
+    indexGenresFileForRead.seekg(0, std::ios::beg);
 
-    // Дізнатися кількість записів в файлі. Ця інформація на початку файлу (header)
-    genresFileForRead.seekg(0, std::ios::beg);
-    uint32_t recordsCount = 0;
-    genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
+    // Спроєктуємо індексну таблицю в оперативну пам'ять. В std::vector<IndexGenre> IndexGenreTable
+    IndexGenre tmp;
+    std::vector<IndexGenre> IndexGenreTable;
 
-    genresFileForRead.close();
+    while (indexGenresFileForRead.read(reinterpret_cast<char*>(&tmp), sizeof(IndexGenre))) {
+        IndexGenreTable.push_back(tmp);
+    }
+
+    indexGenresFileForRead.close();
 
     std::ofstream genresFile("genresFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
@@ -421,72 +426,44 @@ static void InsertM(Genre& newGenre) {
         }
     }
 
-    if (recordsCount == 0)
+    if (IndexGenreTable.size() == 0)
     {
         genresFile.seekp(0, std::ios::beg);
         uint32_t i = 1;
         genresFile.write(reinterpret_cast<const char*>(&i), sizeof(uint32_t));
+        IndexGenre newIndexGenre = { IndexGenreTable.size() + 1, sizeof(uint32_t) };
+        IndexGenreTable.push_back(newIndexGenre);
     }
-
-    genresFile.seekp(0, std::ios::end);  // Перейти в кінцеву позицію
-
-    recordsCount++;
-    newGenre.key = recordsCount;
-
-    std::streampos newPosition = genresFile.tellp();  // Знайти позицію нового запису
-
+    else
+    {
+        IndexGenre newIndexGenre = { IndexGenreTable.size() + 1, IndexGenreTable.back().position + sizeof(Genre) };
+        IndexGenreTable.push_back(newIndexGenre);
+    }    
+    
+    newGenre.key = IndexGenreTable.size();
+    
+    genresFile.seekp(static_cast<std::streamsize>(IndexGenreTable.back().position), std::ios::beg);
     genresFile.write(reinterpret_cast<const char*>(&newGenre), sizeof(Genre));
 
     genresFile.seekp(0, std::ios::beg);
-    genresFile.write(reinterpret_cast<const char*>(&recordsCount), sizeof(uint32_t)); // Додали новий запис зі збільшеним recordsCount на одиницю
+    genresFile.write(reinterpret_cast<const char*>(&newGenre.key), sizeof(uint32_t)); // Додали новий запис зі збільшеним лічильником на одиницю
 
     genresFile.flush();
     genresFile.close();
 
-    // Оновлюємо індексну таблицю
-    std::ifstream indexGenresFileForRead("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
-
-    if (!indexGenresFileForRead.is_open()) {
-        std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
-        throw std::runtime_error("Unable to open file indexGenresFile.ind");
-    }
-    indexGenresFileForRead.seekg(0, std::ios::end);
-
-    // Отримати розмір файлу (позначка поточної позиції в кінці файлу)
-    std::streampos endFilePos = indexGenresFileForRead.tellg();
-
-    // Визначити кількість записів у файлі
-    uint32_t indexRecordsCount = endFilePos / sizeof(IndexGenre);
-
-    // Перейти до останнього запису
-    indexGenresFileForRead.seekg(-static_cast<std::streamoff>(sizeof(IndexGenre)), std::ios::cur);
-
-    // Прочитати останній запис
-    IndexGenre lastIndex;
-    indexGenresFileForRead.read(reinterpret_cast<char*>(&lastIndex), sizeof(IndexGenre));
-
-    indexGenresFileForRead.close();
-
-    // Отримати останній ключ
-    uint32_t lastKey = indexRecordsCount > 0 ? lastIndex.key : 0;
-
-    // Збільшуємо ключ для нового запису
-    uint32_t newKey = lastKey + 1;
-
-    // Додаємо новий запис в індекс
-    IndexGenre newIndex;
-    newIndex.key = newKey;
-    newIndex.position = newPosition;
-
-    std::ofstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
+    // Записати відображення IndexGenreTable в індексну таблицю. Прибираю останній запис
+    std::ofstream indexGenresFile("indexGenresFile.ind", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc); // Переписую файл начисто
 
     if (!indexGenresFile.is_open()) {
         std::cerr << "Unable to open file indexGenresFile.ind" << std::endl;
         throw std::runtime_error("Unable to open file indexGenresFile.ind");
     }
+    indexGenresFile.seekp(0, std::ios::beg);
 
-    indexGenresFile.seekp(0, std::ios::end);  // Перейти в кінцеву позицію
-    indexGenresFile.write(reinterpret_cast<const char*>(&newIndex), sizeof(IndexGenre));
+    for (size_t i = 0; i < IndexGenreTable.size(); i++)
+    {
+        indexGenresFile.write(reinterpret_cast<const char*>(&(IndexGenreTable[i])), sizeof(IndexGenre));
+    }
 
     indexGenresFile.flush();
     indexGenresFile.close();
