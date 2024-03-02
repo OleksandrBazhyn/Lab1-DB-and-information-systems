@@ -127,8 +127,12 @@ std::vector<Book> GetS(uint32_t genreCode) {
     std::ifstream booksFile("booksFile.fl", std::ios::binary | std::ios::in);
     if (!booksFile.is_open())
     {
-        std::cerr << "Unable to open file booksFile.fl" << std::endl;
-        throw std::runtime_error("Unable to open file booksFile.fl");
+        booksFile = std::ifstream("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
+        if (!booksFile.is_open())
+        {
+            std::cerr << "Unable to open file booksFile.fl" << std::endl;
+            throw std::runtime_error("Unable to open file booksFile.fl");
+        }
     }
 
     booksFile.seekg(sizeof(uint32_t), std::ios::beg); // Переступив через header, що містить інформацію про кількість записів
@@ -159,7 +163,7 @@ std::vector<Book> GetS(uint32_t genreCode) {
     }
     else
     {
-        std::cerr << "Book not found" << std::endl;
+        std::cerr << "Books have been not found" << std::endl;
         booksFile.close();
     }
 }
@@ -317,7 +321,7 @@ static void DelM(uint32_t recordNumber)
     lastGenre.key = recordNumber;
     genresFile.write(reinterpret_cast<const char*>(&lastGenre), sizeof(Genre));
 
-    genresFileForRead.seekg(-static_cast<std::streamsize>(sizeof(Genre)), std::ios::end);
+    genresFile.seekp(-static_cast<std::streamsize>(sizeof(Genre)), std::ios::end);
     Genre genreTmp;
     genresFile.write(reinterpret_cast<const char*>(&genreTmp), sizeof(Genre));
 
@@ -826,8 +830,6 @@ static void UtM()
     uint32_t recordsCount = 0;
     genresFileForRead.read(reinterpret_cast<char*>(&recordsCount), sizeof(uint32_t));
 
-    std::cout << "ID\tName" << std::endl;
-
     Genre tmp;
 
     for (size_t i = 1; i < (recordsCount + 1); i++)
@@ -837,18 +839,27 @@ static void UtM()
         {
             break;
         }
-        std::cout << tmp.key << "\t"
-            << tmp.name << std::endl;
-
-        std::vector<Book> subrecords = GetS(i);
-        
-        std::cout << "subrecords: " << std::endl;
-        std::cout << "\t\tBook ID\t\tName\t\tGenre Code\t\tISBN" << std::endl;
-        for (size_t j = 0; j < subrecords.size(); j++)
+        if (tmp.key != 0)
         {
-            std::cout << "\t\t" << subrecords[j].key << "\t\t" << subrecords[j].name << "\t\t" << subrecords[j].genre_code << "\t\t" << subrecords[j].isbn << std::endl;
+            std::cout << "ID\tName" << std::endl;
+
+            std::cout << tmp.key << "\t"
+                << tmp.name << std::endl;
+
+            std::vector<Book> subrecords = GetS(i);
+
+            if (!subrecords.empty())
+            {
+                std::cout << "subrecords: " << std::endl;
+                std::cout << "\t\tBook ID\t\tName\t\t\tGenre Code\t\tISBN" << std::endl;
+                for (size_t j = 0; j < subrecords.size(); j++)
+                {
+                    std::cout << "\t\t" << subrecords[j].key << "\t\t" << subrecords[j].name << "\t\t" << subrecords[j].genre_code << "\t\t" << subrecords[j].isbn << std::endl;
+                }
+            }
+
+            std::cout << std::endl << std::endl;
         }
-        std::cout << std::endl << std::endl;
     }
 }
 
@@ -906,52 +917,51 @@ static void CreateFiles()
 
 int main()
 {
-    Genre newGenre = {1, ""}
-    InsertM();
-
-    // CreateFiles();
-
-    /*
-    Book f(0, 1, 22222222, "testBook");
-    AddBook(f); // Додано тестову книгу з кодом жанру 1
-    */
-
-    // DelM(1);
-    // Book f(0, 1, 22222222, "testBookUpdate");
-    // InsertS(f);
-    // UpdateS(1, f);
-
-    // Genre g(1, "testGenreUpdate");
-    // UpdateM(1, g);
-
-    // Випробуємо GetM
-    Genre resGetM = GetM(1);
-
-    std::cout << resGetM.key << " " << resGetM.name << std::endl;
-
-    std::vector<Book> resGetS = GetS(1);
-
-    std::cout << "Key\tName\t    GenreCode\tISBN" << std::endl;
-    std::cout << "-------------------------------------------" << std::endl;
-    for (const Book& book : resGetS) {
-        std::cout << book.key << "\t" << book.name << "\t    " << book.genre_code << "\t\t" << book.isbn << std::endl;
+    // Ввід 5 master-записів.
+    for (size_t i = 1; i <= 5; i++)
+    {
+        std::string name = "Genre" + std::to_string(i);
+        Genre newGenre = { name.c_str() };
+        InsertM(newGenre);
     }
-    
-    std::cout << std::endl << std::endl;
-    std::cout << std::endl << std::endl;
 
-    std::cout << "CalS 1: " << CalS(1) << std::endl;
-    std::map<std::string, int> calm = CalM(1);
-    std::cout << "CalM 1: " << calm["Count of records"] << "    CalM 1 subs: " << calm["Count of subrecords"] << std::endl;
+    // Для 3-х master-записів ввести 1, 2 та підлеглі записи.
+    Book tmp = { 1, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book1 with genre1" };
+    InsertS(tmp);
+    tmp = { 1, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book2 with genre1" };
+    InsertS(tmp);
+    tmp = { 2, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book1 with genre2" };
+    InsertS(tmp);
+    tmp = { 2, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book2 with genre2" };
+    InsertS(tmp);
+    tmp = { 3, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book1 with genre3" };
+    InsertS(tmp);
+    tmp = { 3, (uint32_t)rand() % (99999999 - 10000000 + 1) + 10000000, "Book2 with genre3" };
+    InsertS(tmp);
 
-    std::cout << std::endl << std::endl;
-    std::cout << std::endl << std::endl;
-    std::cout << std::endl << std::endl;
-    std::cout << std::endl << std::endl;
-    std::cout << std::endl << std::endl;
-    std::cout << std::endl << std::endl;
-
+    // ut-m, ut-s.
+    std::cout << "Command used: UT-M" << std::endl;
     UtM();
+    std::cout << std::endl;
+    std::cout << "Command used: UT-S" << std::endl;
+    UtS();
+    std::cout << std::endl;
+
+    // Вилучити master-запис з двома підлеглими.
+    DelM(1);
+    DelS(4);
+    DelS(3);
+
+    // ut-m, ut-s.
+    std::cout << "Command used: UT-M" << std::endl;
+    UtM();
+    std::cout << std::endl;
+    std::cout << "Command used: UT-S" << std::endl;
+    UtS();
+    std::cout << std::endl;
+
+    // Ввід ще одного master-запису та підлеглого до нього запису.
+    //Genre onegenre = GetM()
 
     return 0;
 }
