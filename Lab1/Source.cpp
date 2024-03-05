@@ -770,7 +770,7 @@ static std::map<std::string, int> CalM(uint32_t recordNumber)
 }
 
 // Підраховує кількість записів в slave файлі
-static int CalS(uint32_t recordNumber)
+static int CalS()
 {
     std::ifstream booksFileForRead("booksFile.fl", std::ios::binary | std::ios::in | std::ios::out);
 
@@ -1014,6 +1014,14 @@ int main()
     std::cout << "Command used: UT-S" << std::endl;
     UtS();
     std::cout << std::endl << std::endl;
+
+    std::cout << std::endl << std::endl << std::endl << std::endl;
+
+    std::map<std::string, int> calm1 = CalM(1);
+
+    std::cout << "Count of records: " << calm1["Count of records"] << std::endl << "Count of subrecords for Genre with ID 1: " << calm1["Count of subrecords"] << std::endl << std::endl;
+
+    std::cout << "Count of slave records: " << CalS() << std::endl;
 
     return 0;
 }
